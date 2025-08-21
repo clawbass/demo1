@@ -1,0 +1,55 @@
+name: Build & Deploy to ECS (staging)
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: eu-central-1
+  PROJECT: dash-staging
+  ECR_FRONTEND: ${{ env.PROJECT }}-frontend
+  ECR_BACKEND:  ${{ env.PROJECT }}-backend
+  ECR_PROXY:    ${{ env.PROJECT }}-proxy
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::<ACCOUNT_ID>:role/<GitHubOIDCDeployRole>
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & Push FRONTEND
+        run: |
+          FRONTEND_URI=$(aws ecr describe-repositories --repository-names ${ECR_FRONTEND} --query 'repositories[0].repositoryUri' --output text)
+          docker build -t ${FRONTEND_URI}:latest ./frontend
+          docker push ${FRONTEND_URI}:latest
+
+      - name: Build & Push BACKEND
+        run: |
+          BACKEND_URI=$(aws ecr describe-repositories --repository-names ${ECR_BACKEND} --query 'repositories[0].repositoryUri' --output text)
+          docker build -t ${BACKEND_URI}:latest ./backend
+          docker push ${BACKEND_URI}:latest
+
+      - name: Build & Push PROXY
+        run: |
+          PROXY_URI=$(aws ecr describe-repositories --repository-names ${ECR_PROXY} --query 'repositories[0].repositoryUri' --output text)
+          docker build -t ${PROXY_URI}:latest ./deploy/nginx
+          docker push ${PROXY_URI}:latest
+
+      - name: Force new deployment
+        run: |
+          CLUSTER=${PROJECT}-cluster
+          SERVICE=${PROJECT}-svc
+          aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" --force-new-deployment
