@@ -1,4 +1,4 @@
-resource "aws_sns_topic" "alerts" { name = "${var.project}-alerts" }
+resource "aws_sns_topic" "alerts" { name = "demo1-alerts" }
 resource "aws_sns_topic_subscription" "email" {
   topic_arn = aws_sns_topic.alerts.arn
   protocol  = "email"
@@ -6,7 +6,7 @@ resource "aws_sns_topic_subscription" "email" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "cpu_high" {
-  alarm_name          = "${var.project}-cpu>70"
+  alarm_name          = "demo1-cpu>70"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   metric_name         = "CPUUtilization"
