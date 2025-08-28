@@ -1,17 +1,17 @@
 resource "aws_lb" "this" {
-  name               = "${var.project}-alb"
+  name               = "demo1-alb"
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
   subnets            = data.aws_subnets.default.ids
 }
 
 resource "aws_acm_certificate" "cert" {
-  domain_name       = var.domain_name
+  domain_name       = clawbassdemo1.online 
   validation_method = "DNS"
 }
 
 resource "aws_lb_target_group" "proxy" {
-  name        = "${var.project}-proxy-tg"
+  name        = "clawbassdemo1.online"
   port        = 80
   protocol    = "HTTP"
   vpc_id      = data.aws_vpc.default.id
