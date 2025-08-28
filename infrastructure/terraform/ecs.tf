@@ -1,6 +1,6 @@
-resource "aws_ecs_cluster" "this" { name = "${var.project}-cluster" }
+resource "aws_ecs_cluster" "this" { name = "demo1-cluster" }
 
-resource "aws_cloudwatch_log_group" "logs" { name = "/ecs/${var.project}" retention_in_days = 30 }
+resource "aws_cloudwatch_log_group" "logs" { name = "/ecs/demo1" retention_in_days = 30 }
 
 # shared ephemeral volume for .htpasswd between sidecar and proxy
 locals {
@@ -67,7 +67,7 @@ resource "aws_ecs_task_definition" "this" {
 }
 
 resource "aws_ecs_service" "this" {
-  name            = "${var.project}-svc"
+  name            = "demo1-svc"
   cluster         = aws_ecs_cluster.this.id
   task_definition = aws_ecs_task_definition.this.arn
   desired_count   = 1
