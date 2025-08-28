@@ -11,9 +11,6 @@ permissions:
 env:
   AWS_REGION: eu-central-1
   PROJECT: dash-staging
-  ECR_FRONTEND: ${{ env.PROJECT }}-frontend
-  ECR_BACKEND:  ${{ env.PROJECT }}-backend
-  ECR_PROXY:    ${{ env.PROJECT }}-proxy
 
 jobs:
   build-and-deploy:
@@ -21,35 +18,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configure AWS OIDC
+      - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::<ACCOUNT_ID>:role/<GitHubOIDCDeployRole>
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Login to ECR
+      - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build & Push FRONTEND
+      - name: Build & push FRONTEND
         run: |
-          FRONTEND_URI=$(aws ecr describe-repositories --repository-names ${ECR_FRONTEND} --query 'repositories[0].repositoryUri' --output text)
+          FRONTEND_URI=$(aws ecr describe-repositories --repository-names dempo1-frontend --query 'repositories[0].repositoryUri' --output text)
           docker build -t ${FRONTEND_URI}:latest ./frontend
           docker push ${FRONTEND_URI}:latest
-
-      - name: Build & Push BACKEND
+      
+      - name: Build & push PROXY
         run: |
-          BACKEND_URI=$(aws ecr describe-repositories --repository-names ${ECR_BACKEND} --query 'repositories[0].repositoryUri' --output text)
-          docker build -t ${BACKEND_URI}:latest ./backend
-          docker push ${BACKEND_URI}:latest
-
-      - name: Build & Push PROXY
-        run: |
-          PROXY_URI=$(aws ecr describe-repositories --repository-names ${ECR_PROXY} --query 'repositories[0].repositoryUri' --output text)
+          PROXY_URI=$(aws ecr describe-repositories --repository-names ${PROJECT}-proxy --query 'repositories[0].repositoryUri' --output text)
           docker build -t ${PROXY_URI}:latest ./deploy/nginx
           docker push ${PROXY_URI}:latest
 
-      - name: Force new deployment
+      - name: Force new deployment (proxy)
         run: |
-          CLUSTER=${PROJECT}-cluster
-          SERVICE=${PROJECT}-svc
-          aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" --force-new-deployment
+          aws ecs update-service --cluster demo1-cluster --service demo1-proxy --force-new-deployment
+      - name: Force new deployment (frontend)
+        run: |
+          aws ecs update-service --cluster demo1}-cluster --service demo1-frontend --force-new-deployment
+      - name: Force new deployment (backend)
+        run: |
+          aws ecs update-service --cluster demo1-cluster --service demo1-backend --force-new-deployment
